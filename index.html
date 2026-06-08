@@ -116,6 +116,23 @@ body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--t
 }
 .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-c, var(--blue)); flex-shrink: 0; }
 canvas { width: 100% !important; }
+.loading-overlay {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid #E5EBF4;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 .coverage-chart-wrap { 
   position: relative; 
   height: 320px;
@@ -251,6 +268,12 @@ tbody td:first-child { text-align: left; font-weight: 500; }
 </div>
 
 <div class="main">
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div style="margin-top:16px;color:var(--muted);font-size:14px">กำลังโหลดข้อมูลจาก Google Sheets...</div>
+  </div>
 
   <!-- KPI -->
   <div class="kpi-row">
@@ -388,206 +411,138 @@ tbody td:first-child { text-align: left; font-weight: 500; }
 
 <script>
 // ══════════════════════════════════════════════════════
-//  DATA — อัพเดตจาก retina_tracking_v6.xlsx
+//  DATA — ดึงจาก Google Sheets ผ่าน Apps Script
 // ══════════════════════════════════════════════════════
-const DISTRICTS = [
-  {name:'เลาขวัญ', hc:13, target:1630, done:1470, pct:0.9018, noDR:1327, dr:143, drPct:0.0973, refDR:3, refPhoto:11, refOther:2, mild:131, mod:9, sev:2, pdr:1, cataract:150, pterygium:14, glaucoma:3, other:2},
-  {name:'หนองปรือ', hc:7, target:310, done:226, pct:0.729, noDR:214, dr:12, drPct:0.0531, refDR:0, refPhoto:3, refOther:1, mild:8, mod:4, sev:0, pdr:0, cataract:36, pterygium:16, glaucoma:0, other:0},
-  {name:'ศรีสวัสดิ์', hc:8, target:23, done:21, pct:0.913, noDR:16, dr:5, drPct:0.2381, refDR:0, refPhoto:0, refOther:0, mild:5, mod:0, sev:0, pdr:0, cataract:3, pterygium:0, glaucoma:0, other:0},
-  {name:'พนมทวน', hc:9, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ห้วยกระเจา', hc:6, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ด่านมะขามเตี้ย', hc:7, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'สังขละบุรี', hc:6, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ทองผาภูมิ', hc:13, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'บ่อพลอย', hc:10, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ไทรโยค', hc:12, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ท่าม่วง', hc:13, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'ท่ามะกา', hc:15, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {name:'เมือง', hc:24, target:0, done:0, pct:0, noDR:0, dr:0, drPct:0, refDR:0, refPhoto:0, refOther:0, mild:0, mod:0, sev:0, pdr:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-];
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv819BlEPfzI4s6xa6A0tl8hM0fuyR4QGugY1xs6zb6g9bheLX33F5J69ybjjrRyzxLw/exec';
 
-const RAW = [
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองประดู่', target:170, done:171, noDR:162, mild:8, mod:1, sev:0, pdr:0, sumDR:9, refDR:1, refPh:1, refOt:1, cataract:30, pterygium:3, glaucoma:1, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองเค็ด', target:80, done:78, noDR:76, mild:2, mod:0, sev:0, pdr:0, sumDR:2, refDR:0, refPh:0, refOt:0, cataract:1, pterygium:0, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านแสลบหย่อง', target:120, done:143, noDR:126, mild:16, mod:0, sev:1, pdr:0, sumDR:17, refDR:1, refPh:0, refOt:0, cataract:4, pterygium:0, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองจั่น', target:120, done:116, noDR:108, mild:8, mod:0, sev:0, pdr:0, sumDR:8, refDR:0, refPh:0, refOt:0, cataract:21, pterygium:1, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองโสน', target:182, done:173, noDR:151, mild:21, mod:1, sev:0, pdr:0, sumDR:22, refDR:0, refPh:3, refOt:1, cataract:20, pterygium:2, glaucoma:2, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านตลุงเหนือ', target:60, done:60, noDR:52, mild:8, mod:0, sev:0, pdr:0, sumDR:8, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านโป่งพรหม', target:70, done:69, noDR:60, mild:9, mod:0, sev:0, pdr:0, sumDR:9, refDR:0, refPh:1, refOt:0, cataract:7, pterygium:1, glaucoma:0, other:1},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองฝ้าย', target:100, done:102, noDR:95, mild:7, mod:0, sev:0, pdr:0, sumDR:7, refDR:0, refPh:0, refOt:0, cataract:10, pterygium:1, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านทุ่งกระบ่ำ', target:98, done:68, noDR:60, mild:7, mod:1, sev:0, pdr:0, sumDR:8, refDR:1, refPh:1, refOt:0, cataract:7, pterygium:1, glaucoma:0, other:1},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองมะสัง', target:200, done:102, noDR:93, mild:9, mod:0, sev:0, pdr:0, sumDR:9, refDR:0, refPh:2, refOt:0, cataract:17, pterygium:2, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองอำเภอจีน', target:112, done:112, noDR:101, mild:10, mod:1, sev:0, pdr:0, sumDR:11, refDR:0, refPh:2, refOt:0, cataract:14, pterygium:1, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านเขาวงพระจันทร์', target:78, done:78, noDR:70, mild:5, mod:3, sev:0, pdr:0, sumDR:8, refDR:0, refPh:0, refOt:0, cataract:6, pterygium:0, glaucoma:0, other:0},
-  {district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองปลิง', target:240, done:198, noDR:173, mild:21, mod:2, sev:1, pdr:1, sumDR:25, refDR:0, refPh:1, refOt:0, cataract:13, pterygium:2, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านหนองปรือ', target:55, done:30, noDR:28, mild:1, mod:1, sev:0, pdr:0, sumDR:2, refDR:0, refPh:1, refOt:1, cataract:7, pterygium:4, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านหนองขอน', target:35, done:34, noDR:33, mild:1, mod:0, sev:0, pdr:0, sumDR:1, refDR:0, refPh:0, refOt:0, cataract:5, pterygium:1, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านโป่งช้าง', target:64, done:53, noDR:49, mild:3, mod:1, sev:0, pdr:0, sumDR:4, refDR:0, refPh:0, refOt:0, cataract:4, pterygium:4, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านหนองใหญ่', target:33, done:29, noDR:27, mild:0, mod:2, sev:0, pdr:0, sumDR:2, refDR:0, refPh:2, refOt:0, cataract:2, pterygium:0, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านพยอมงาม', target:30, done:25, noDR:25, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:6, pterygium:3, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านหนองปลาไหล', target:80, done:44, noDR:41, mild:3, mod:0, sev:0, pdr:0, sumDR:3, refDR:0, refPh:0, refOt:0, cataract:9, pterygium:4, glaucoma:0, other:0},
-  {district:'หนองปรือ', hc:'รพ.สต.บ้านหนองผักแว่น', target:13, done:11, noDR:11, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:3, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านน้ำพุล่าง', target:13, done:11, noDR:10, mild:1, mod:0, sev:0, pdr:0, sumDR:1, refDR:0, refPh:0, refOt:0, cataract:1, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านท่าลำใย', target:10, done:10, noDR:6, mild:4, mod:0, sev:0, pdr:0, sumDR:4, refDR:0, refPh:0, refOt:0, cataract:2, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านบนเขาแก่งเรียง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านเอราวัณ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านปลายนาสวน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านเกาะบุก', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านน้ำมุด', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ศรีสวัสดิ์', hc:'รพ.สต.บ้านท่าสนุน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านหนองโพธิ์', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านหลุมหิน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านทุ่งสมอ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านดอนเจดีย์', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านเบ็ญพาด', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านบ่อระแหง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านโคราช', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านตลาดเขต', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'พนมทวน', hc:'รพ.สต.บ้านสระลุมพุก', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.บ้านทัพพระยา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.บ้านไพรงาม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.วังไผ่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.บ้านดอนแสลบ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.บ้านหนองปลิง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ห้วยกระเจา', hc:'รพ.สต.บ้านสระลงเรือ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านหนองไผ่เดิม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านหนองหญ้าปล้อง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านยางเกาะ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านท่าโป่ง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านไทรทอง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านดอนสว่าง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ด่านมะขามเตี้ย', hc:'รพ.สต.บ้านหนองปากดง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.เวียคะดี้', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.บ้านใหม่พัฒนา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.บ้านซองกาเรีย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.บ้านพระเจดีย์สามองค์', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.บ้านยางขาว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'สังขละบุรี', hc:'รพ.สต.บ้านกองม่องทะ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านปรังการังสี', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านไร่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านอู่ล่อง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านหินแหลม(บ้านสหกรณ์นิคม)', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านเหมืองปิล๊อก', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านหินดาด', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านกุยมั่ง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านลิ่นถิ่น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านเกริงกระเวีย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านทุ่งเสือโทน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านภูเตย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านห้วยเขย่ง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ทองผาภูมิ', hc:'รพ.สต.บ้านกุยแหย่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านหนองกระทุ่ม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านใหม่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านพุพรหม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านหนองรี', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านไร่เจริญ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านช่องด่าน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านสามยอด', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านลำอีซู', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านหลังเขา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'บ่อพลอย', hc:'รพ.สต.บ้านหลุมรัง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'แม่น้ำน้อย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'ท่าทุ่งนา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านดาวดึงส์', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านช่องอ้ายกาง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านท่าเสา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'หนองปลา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านพุเตย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านท่ากิเลน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านทุ่งก้างย่าง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านแก่งระเบิด', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านทุ่งเรือโกลน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ไทรโยค', hc:'บ้านบ้องตี้', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านหนองขาว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านกร่างทอง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านเขาน้อย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านม่วงชุม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านสระเศรษฐี', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านห้วยไร่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านท่าตะคร้อ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านรางสาลี่', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านศาลเจ้าโพรงไม้', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านเขาดิน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านตลาดสำรอง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'บ้านหนองตากยา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่าม่วง', hc:'นพกิจโกศล', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านหนองพันท้าว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านยางม่วง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านดอนชะเอม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านสำนักคร้อ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านเขาตะพั้น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านโพธิ์เย็น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านเขาช่อง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านสนามแย้', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านท่าเสา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านหนองลาน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านกระต่ายเต้น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านอุโลกสี่หมื่น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านพระแท่น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านหวายเหนียว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'ท่ามะกา', hc:'บ้านแสนตอ', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านเขาพุราง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านหนองบัว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านหนองแก', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านวังด้ง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านท่ามะนาว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านท่าทุ่ม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านหนองสามพราน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านท่าทุ่งนา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านทับศิลา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านหนองหญ้า', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านวังปลาหมู', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านแก่งหลวง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านเก่า', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านห้วยน้ำขาว', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านลำทราย', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านตะเคียนงาม', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านพุน้ำร้อน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านวังเย็น', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านถ้ำมังกรทอง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านเขาตองพัฒนา', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านแก่งเสี้ยน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านลาดหญ้า', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านยาง', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-  {district:'เมือง', hc:'บ้านหนองสองตอน', target:0, done:0, noDR:0, mild:0, mod:0, sev:0, pdr:0, sumDR:0, refDR:0, refPh:0, refOt:0, cataract:0, pterygium:0, glaucoma:0, other:0},
-];
+// ตัวแปรเก็บข้อมูล (จะถูกเติมหลัง fetch สำเร็จ)
+let DISTRICTS = [];
+let RAW = [];
+let REFER = [];
 
-const REFER = [
-  {type:'DR', district:'เลาขวัญ', hc:'รพ.สต.บ้านทุ่งกระบ่ำ', name:'นายถวิล สังข์วรรณ', age:'48', ud:'DM DLP', reason:'NpDR with large cuppingReferพหล วัดความดันตา OCT  disc', dx:'NpDR', note:'refer รพ.พหล'},
-  {type:'DR', district:'เลาขวัญ', hc:'รพ.สต.บ้านแสลบหย่อง', name:'นางสาว ลำดวน บานแย้ม', age:'-', ud:'DM HT DLP', reason:'Severe NPDR', dx:'-', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพ.เลาขวัญ'},
-  {type:'DR', district:'เลาขวัญ', hc:'รพ.สต.บ้่านหนองปลิง', name:'นางสาวสวาศ พลายละหาร', age:'63', ud:'DM HT DLP', reason:'Severe NPDR', dx:'-', note:'ปฎิเสธรักษา'},
-  {type:'DR', district:'เลาขวัญ', hc:'รพ.สต.บ้่านหนองปลิง', name:'นางสาวณิชากานต์ นาคเถื่อน', age:'47', ud:'DM HT DLP', reason:'PDR', dx:'PRD', note:'refer รพ.ไร่ขิง'},
-  {type:'DR', district:'เลาขวัญ', hc:'รพ.สต.หนองประดู่', name:'นางธันยพร อธิปัญจพงษ์', age:'56', ud:'DM', reason:'Moderate NPDR', dx:'-', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพ.เลาขวัญ'},
-  {type:'ถ่ายซ้ำ', district:'หนองปรือ', hc:'รพ.สต.บ้านหนองปรือ', name:'นางสาวประเทือง คล้ายมี', age:'77', ud:'DM HT  DLP', reason:'Abnormal fundus ', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'หนองปรือ', hc:'รพ.สต.บ้านหนองใหญ่', name:'นายสำนวน ขันธเขตต์', age:'61', ud:'DM', reason:'Abnormal fundus ', dx:'Moderate NPDR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'หนองปรือ', hc:'รพ.สต.บ้านหนองใหญ่', name:'นางสาวยม อิ่มบางแพ', age:'69', ud:'DM', reason:'Abnormal fundus ', dx:'Moderate NPDR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านทุ่งกระบ่ำ', name:'นางสาวแต๋น ชื่นใจดี', age:'56', ud:'DM', reason:'Abnormal fundus', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองปลิง', name:'นางสาวสำอาง พลายละหาร', age:'65', ud:'DM HT ', reason:'Abnormal fundus ', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองมะสัง', name:'นางสาวกิ่งแก้ว ผิวสุข', age:'47', ud:'DM HT DLP thyrois oldCVA', reason:'Abnormal fundus ', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองมะสัง', name:'นางสาวบุญสม ตู้เจริญ', age:'65', ud:'DM DLP HT SLE', reason:'Abnormal fundus ', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองวประดู่', name:'นางสาวประเทืือง นกขวัญ', age:'66', ud:'DM', reason:'Abnormal fundus', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองอำเภอจีน', name:'นางเงิน สุดนาลาว', age:'63', ud:'DM HT DLP', reason:'Abnormal fundus ', dx:'mild NPDR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองอำเภอจีน', name:'นางเสริม โกสินทร์', age:'63', ud:'DM', reason:'Abnormal fundus ', dx:'mild NPDR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองโสน', name:'นางยิ้ม ม่วงคำ', age:'72', ud:'DM HT DLP', reason:'Abnormal fundus', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองโสน', name:'นางวันเพ็ญ เกิดพงษ์', age:'65', ud:'DM HT DLP', reason:'Abnormal fundus', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองโสน', name:'นายกุหลาบ ฉิมเพ็ชร', age:'80', ud:'DM DLP', reason:'Abnormal fundus ', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช [เลขบัตร 12 หลัก ตรวจสอบ]'},
-  {type:'ถ่ายซ้ำ', district:'เลาขวัญ', hc:'รพ.สต.บ้านโป่งพรหม', name:'นางฉลอง ดวงแก้ว', age:'60', ud:'DM', reason:'Abnormal fundus', dx:'No DR', note:'ส่งถ่ายจอประสาทตาซ้ำที่รพช [เลขบัตร 12 หลัก ตรวจสอบ]'},
-  {type:'อื่นๆ', district:'หนองปรือ', hc:'รพ.สต.บ้านหนองปรือ', name:'นางสาวสุขุม สาราคำ', age:'62', ud:'DM HT DLP', reason:'NPDR Macula edrma Lt', dx:'NpDR', note:'refer รพ.พหล [แก้ปีงบประมาณจาก 993665 → 2569]'},
-  {type:'อื่นๆ', district:'เลาขวัญ', hc:'รพ.สต.บ้านหนองโสน', name:'นางสุนีย์ แช่มช้อย', age:'61', ud:'DM', reason:'R/O glaucoma', dx:'-', note:'refer รพ.พหล'},
-  {type:'อื่นๆ', district:'เลาขวัญ', hc:'รพ.สต.หนองประดู่', name:'นางทุเรียน สระเจว', age:'55', ud:'DM', reason:'ต้อหิน Loss F/U', dx:'-', note:'refer รพ.พหล'},
-];
-
-// ══════════════════════════════════════════════════════
-//  INIT FILTER DROPDOWN
-// ══════════════════════════════════════════════════════
-(function initFilter() {
-  const sel = document.getElementById('filterDistrict');
-  DISTRICTS.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.name; opt.textContent = d.name;
-    sel.appendChild(opt);
+// แปลงข้อมูลจาก Apps Script JSON → รูปแบบที่ Dashboard ใช้
+function transformData(json) {
+  // ── DISTRICTS ──
+  DISTRICTS = json.districts.map(d => {
+    const noDR = d['No DR'] || 0;
+    const mild = d['Mild NPDR'] || 0;
+    const mod  = d['Moderate NPDR'] || 0;
+    const sev  = d['Severe NPDR'] || 0;
+    const pdr  = d['PDR'] || 0;
+    const dr   = d['รวม DR'] || 0;
+    const target = d['เป้าหมาย'] || 0;
+    const done   = d['ตรวจได้'] || 0;
+    return {
+      name: d['อำเภอ'],
+      hc: d['จำนวน รพ.สต.'] || 0,
+      target: target,
+      done: done,
+      pct: target > 0 ? done/target : 0,
+      noDR: noDR,
+      dr: dr,
+      drPct: done > 0 ? dr/done : 0,
+      refDR:    d['Refer DR'] || 0,
+      refPhoto: d['Refer ถ่ายซ้ำ'] || 0,
+      refOther: d['Refer อื่นๆ'] || 0,
+      mild: mild, mod: mod, sev: sev, pdr: pdr,
+      // คอลัมน์อื่นๆ ของผลตรวจ (ไม่มีใน API Export → ดึงจาก hc_list รวม)
+      cataract: 0, pterygium: 0, glaucoma: 0, other: 0
+    };
   });
-})();
+  
+  // ── RAW (ราย รพ.สต.) ──
+  RAW = json.hc_list.map(r => ({
+    district: r.district,
+    hc: r.hc,
+    target: r.target || 0,
+    done:   r.examined || 0,
+    noDR:   r.no_dr || 0,
+    mild:   r.mild_npdr || 0,
+    mod:    r.moderate_npdr || 0,
+    sev:    r.severe_npdr || 0,
+    pdr:    r.pdr || 0,
+    sumDR:  r.total_dr || 0,
+    refDR:  r.refer_dr || 0,
+    refPh:  r.refer_repeat || 0,
+    refOt:  r.refer_other || 0,
+    cataract:  r.cataract || 0,
+    pterygium: r.pterygium || 0,
+    glaucoma:  r.glaucoma || 0,
+    other:     r.other_eye || 0
+  }));
+  
+  // อัพเดต DISTRICTS — รวมข้อมูลผลตรวจอื่นๆ จาก RAW
+  DISTRICTS.forEach(d => {
+    const hcInDist = RAW.filter(r => r.district === d.name);
+    d.cataract  = hcInDist.reduce((s,r) => s + r.cataract, 0);
+    d.pterygium = hcInDist.reduce((s,r) => s + r.pterygium, 0);
+    d.glaucoma  = hcInDist.reduce((s,r) => s + r.glaucoma, 0);
+    d.other     = hcInDist.reduce((s,r) => s + r.other, 0);
+  });
+  
+  // ── REFER (รายชื่อ) ──
+  REFER = json.refers.map(r => ({
+    type: r.type,
+    district: r.district,
+    hc: r.hc,
+    name: r.name,
+    age: r.age,
+    ud: r.ud,
+    reason: r.reason,
+    dx: r.diagnosis,
+    note: r.note
+  }));
+  
+  // อัพเดตวันที่จาก timestamp ของ JSON
+  if (json.timestamp) {
+    const dt = new Date(json.timestamp);
+    const thaiMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                        'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const formatted = `${dt.getDate()} ${thaiMonths[dt.getMonth()]} ${dt.getFullYear()+543}`;
+    const hh = String(dt.getHours()).padStart(2,'0');
+    const mm = String(dt.getMinutes()).padStart(2,'0');
+    const el = document.getElementById('updateDate');
+    if (el) el.textContent = `อัพเดตล่าสุด: ${formatted} ${hh}:${mm} น.`;
+  }
+}
+
+// โหลดข้อมูลจาก Apps Script
+async function loadData() {
+  const loadingEl = document.getElementById('loadingOverlay');
+  try {
+    const res = await fetch(APPS_SCRIPT_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    
+    transformData(json);
+    
+    // เติม dropdown filter
+    const sel = document.getElementById('filterDistrict');
+    sel.innerHTML = '<option value="all">ทุกอำเภอ</option>';
+    DISTRICTS.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.name; opt.textContent = d.name;
+      sel.appendChild(opt);
+    });
+    
+    // render
+    applyFilter();
+    
+    if (loadingEl) loadingEl.style.display = 'none';
+  } catch (err) {
+    console.error('โหลดข้อมูลล้มเหลว:', err);
+    if (loadingEl) {
+      loadingEl.innerHTML = `
+        <div style="text-align:center;color:#DC2626;padding:40px">
+          <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px">โหลดข้อมูลไม่สำเร็จ</div>
+          <div style="font-size:13px;color:#64748B;margin-bottom:16px">${err.message}</div>
+          <button onclick="location.reload()" style="padding:8px 20px;background:#2D6BC4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:Sarabun">ลองใหม่</button>
+        </div>`;
+    }
+  }
+}
 
 // ══════════════════════════════════════════════════════
 //  COVERAGE BAR CHART (แผนภูมิแนวตั้ง — ความครอบคลุมรายอำเภอ)
@@ -915,25 +870,9 @@ function applyFilter() {
 }
 
 // ══════════════════════════════════════════════════════
-//  UPDATE DATE
+//  INIT — โหลดข้อมูลจาก Apps Script แล้วเริ่ม render
 // ══════════════════════════════════════════════════════
-(function setUpdateDate() {
-  // ปีงบประมาณไทย พ.ศ. = ค.ศ. + 543
-  const now = new Date();
-  const d = String(now.getDate()).padStart(2, '0');
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const y = now.getFullYear() + 543;
-  const thaiMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
-                      'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const formatted = `${parseInt(d)} ${thaiMonths[now.getMonth()]} ${y}`;
-  const el = document.getElementById('updateDate');
-  if (el) el.textContent = `อัพเดตล่าสุด: ${formatted}`;
-})();
-
-// ══════════════════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════════════════
-applyFilter();
+loadData();
 </script>
 </body>
 </html>
