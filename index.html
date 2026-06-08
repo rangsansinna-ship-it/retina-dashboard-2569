@@ -36,6 +36,13 @@ body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--t
   background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
   border-radius: 20px; padding: 6px 16px; font-size: 13px; color: #CBD5E1; font-weight: 500;
 }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.header-logo {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #fff; padding: 3px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 2px solid rgba(255,255,255,0.4);
+}
 .filter-bar {
   background: var(--surface); border-bottom: 1px solid var(--border);
   padding: 12px 32px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
@@ -81,6 +88,13 @@ body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--t
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  max-width: 320px;
+  margin: 0 auto;
+}
+.pie-inner canvas {
+  max-width: 240px !important;
+  max-height: 240px !important;
 }
 .prog-card-full {
   display: flex;
@@ -102,6 +116,12 @@ body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--t
 }
 .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-c, var(--blue)); flex-shrink: 0; }
 canvas { width: 100% !important; }
+.coverage-chart-wrap { 
+  position: relative; 
+  height: 320px;
+  width: 100%;
+}
+.coverage-chart-wrap canvas { max-height: 320px !important; }
 
 /* Table */
 .table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
@@ -216,21 +236,17 @@ tbody td:first-child { text-align: left; font-weight: 500; }
 <div class="header">
   <div class="header-left">
     <h1>🔬 ระบบติดตามผลตรวจจอประสาทตา ผู้ป่วย DM — จังหวัดกาญจนบุรี</h1>
-    <p>ปีงบประมาณ 2569 · อัพเดตจากข้อมูล Excel ล่าสุด · ครอบคลุม 13 อำเภอ 143 รพ.สต. · เป้าหมาย 1,963 ราย</p>
+    <p>ปีงบประมาณ 2569 · <span id="updateDate">อัพเดตล่าสุด: —</span></p>
   </div>
-  <div class="header-badge">ปีงบประมาณ 2569</div>
+  <div class="header-right">
+    <img src="data:image/jpeg;base64,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" alt="โลโก้ อบจ.กาญจนบุรี" class="header-logo">
+  </div>
 </div>
 
 <div class="filter-bar">
   <label>กรองข้อมูล:</label>
   <select id="filterDistrict" onchange="applyFilter()">
     <option value="all">ทุกอำเภอ</option>
-  </select>
-  <label style="margin-left:8px">สถานะ:</label>
-  <select id="filterStatus" onchange="applyFilter()">
-    <option value="all">ทั้งหมด</option>
-    <option value="active">มีข้อมูลแล้ว</option>
-    <option value="pending">ยังไม่มีข้อมูล</option>
   </select>
 </div>
 
@@ -265,10 +281,13 @@ tbody td:first-child { text-align: left; font-weight: 500; }
     </div>
   </div>
 
-  <!-- Row 1: Progress bar เต็มความกว้าง -->
+  <!-- Row 1: Bar Chart แนวตั้ง — ความครอบคลุมรายอำเภอ -->
   <div class="card prog-card-full" style="margin-bottom:20px">
     <div class="card-title"><span class="dot" style="--dot-c:#2D6BC4"></span><span id="progCardTitle">ความครอบคลุมรายอำเภอ (% ของเป้าหมาย)</span></div>
-    <div class="prog-wrap" id="progWrap"></div>
+    <div class="coverage-chart-wrap">
+      <canvas id="coverageChart"></canvas>
+    </div>
+    <div id="pendingLabel" class="pending-label" style="text-align:center;margin-top:10px"></div>
   </div>
 
   <!-- Row 2: 2 pie charts เรียงข้างกัน -->
@@ -571,68 +590,108 @@ const REFER = [
 })();
 
 // ══════════════════════════════════════════════════════
-//  PROGRESS BARS
+//  COVERAGE BAR CHART (แผนภูมิแนวตั้ง — ความครอบคลุมรายอำเภอ)
 // ══════════════════════════════════════════════════════
+let coverageChart;
 function buildProgress(data, distFilter) {
-  const wrap = document.getElementById('progWrap');
   const isSingle = distFilter && distFilter !== 'all';
+  const pendingLabelEl = document.getElementById('pendingLabel');
 
-  // Update card title
+  // อัพเดต title
   document.getElementById('progCardTitle').textContent = isSingle
     ? `ความครอบคลุมรายหน่วยบริการ — อำเภอ${distFilter}`
     : 'ความครอบคลุมรายอำเภอ (% ของเป้าหมาย)';
 
-  wrap.innerHTML = '';
+  let labels, percents, doneVals, targetVals, colors, pending;
 
   if (isSingle) {
     // แสดง รพ.สต. รายตัวของอำเภอนั้น
     const hcRows = RAW.filter(r => r.district === distFilter);
-    hcRows.forEach(r => {
-      const pct  = r.target > 0 ? Math.round((r.done / r.target) * 100) : 0;
-      const color = pct >= 70 ? '#0B7A63' : pct >= 50 ? '#2D6BC4' : r.target === 0 ? '#94A3B8' : '#D97706';
-      const chip  = r.target === 0
-        ? `<span class="status-chip chip-none">ยังไม่มีข้อมูล</span>`
-        : pct >= 70
-        ? `<span class="status-chip chip-good">≥70%</span>`
-        : pct >= 50
-        ? `<span class="status-chip chip-mid">50–69%</span>`
-        : `<span class="status-chip chip-low">< 50%</span>`;
-      const label = r.target > 0
-        ? `${r.done.toLocaleString()} / ${r.target.toLocaleString()} ราย — <b style="color:${color}">${pct}%</b>`
-        : `<span style="color:var(--muted)">ยังไม่มีข้อมูล</span>`;
-      wrap.innerHTML += `
-        <div class="prog-row">
-          <div class="prog-label">
-            <span style="font-size:11px">${r.hc}${chip}</span>
-            <span>${label}</span>
-          </div>
-          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${color}"></div></div>
-        </div>`;
+    labels     = hcRows.map(r => r.hc.replace('รพ.สต.', ''));
+    percents   = hcRows.map(r => r.target > 0 ? Math.round((r.done / r.target) * 100) : 0);
+    doneVals   = hcRows.map(r => r.done);
+    targetVals = hcRows.map(r => r.target);
+    colors     = hcRows.map(r => {
+      if (r.target === 0) return '#E5EBF4'; // อ่อน — ไม่มีข้อมูล
+      const p = (r.done / r.target) * 100;
+      return p >= 70 ? '#0B7A63' : p >= 50 ? '#2D6BC4' : '#D97706';
     });
+    pending = [];
   } else {
-    // แสดงรายอำเภอ (เดิม)
-    const active  = data.filter(d => d.target > 0);
-    const pending = data.filter(d => d.target === 0);
-    active.forEach(d => {
-      const pct   = Math.round(d.pct * 100);
-      const color = pct >= 70 ? '#0B7A63' : pct >= 50 ? '#2D6BC4' : '#D97706';
-      const chip  = pct >= 70
-        ? `<span class="status-chip chip-good">≥70%</span>`
-        : pct >= 50
-        ? `<span class="status-chip chip-mid">50–69%</span>`
-        : `<span class="status-chip chip-low">< 50%</span>`;
-      wrap.innerHTML += `
-        <div class="prog-row">
-          <div class="prog-label">
-            <span>${d.name}${chip}</span>
-            <span>${d.done.toLocaleString()} / ${d.target.toLocaleString()} ราย — <b style="color:${color}">${pct}%</b></span>
-          </div>
-          <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${color}"></div></div>
-        </div>`;
+    // แสดงรายอำเภอทั้ง 13 อำเภอ (รวมที่ยังไม่มีเป้าหมาย)
+    labels     = data.map(d => d.name);
+    percents   = data.map(d => d.target > 0 ? Math.round(d.pct * 100) : 0);
+    doneVals   = data.map(d => d.done);
+    targetVals = data.map(d => d.target);
+    colors     = data.map(d => {
+      if (d.target === 0) return '#E5EBF4'; // อ่อน — ยังไม่มีข้อมูล
+      const p = d.pct * 100;
+      return p >= 70 ? '#0B7A63' : p >= 50 ? '#2D6BC4' : '#D97706';
     });
-    if (pending.length) {
-      wrap.innerHTML += `<div class="pending-label">⏳ ยังไม่มีเป้าหมาย: ${pending.map(d => d.name).join(' · ')}</div>`;
+    pending = data.filter(d => d.target === 0).map(d => d.name);
+  }
+
+  // ทำลาย chart เก่าก่อนสร้างใหม่
+  if (coverageChart) coverageChart.destroy();
+
+  coverageChart = new Chart(document.getElementById('coverageChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '% ครอบคลุม',
+        data: percents,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const i = ctx.dataIndex;
+              if (targetVals[i] === 0) return 'ยังไม่มีเป้าหมาย';
+              return [
+                `${doneVals[i].toLocaleString()} / ${targetVals[i].toLocaleString()} ราย`,
+                `ครอบคลุม ${percents[i]}%`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(v) { return v + '%'; },
+            font: { family: 'Sarabun', size: 11 }
+          },
+          grid: { color: '#EDF2F7' }
+        },
+        x: {
+          ticks: { 
+            font: { family: 'Sarabun', size: 11 },
+            maxRotation: 45,
+            minRotation: 0
+          },
+          grid: { display: false }
+        }
+      }
     }
+  });
+
+  // แสดงรายชื่ออำเภอที่ยังไม่มีข้อมูลด้านล่าง
+  if (pending.length && !isSingle) {
+    pendingLabelEl.innerHTML = `⏳ ยังไม่มีเป้าหมาย: ${pending.join(' · ')}`;
+    pendingLabelEl.style.display = 'block';
+  } else {
+    pendingLabelEl.style.display = 'none';
   }
 }
 
@@ -680,26 +739,38 @@ function buildOtherPie(data) {
 // ══════════════════════════════════════════════════════
 function buildSummary(data) {
   const tbody = document.getElementById('summaryBody');
+  
+  // helper: นับ refer ของอำเภอจาก REFER array
+  const countRefer = (distName, type) => 
+    REFER.filter(r => r.district === distName && r.type === type).length;
+  
   const totT  = data.reduce((s,d)=>s+d.target,0);
   const totD  = data.reduce((s,d)=>s+d.done,0);
   const totND = data.reduce((s,d)=>s+d.noDR,0);
   const totDR = data.reduce((s,d)=>s+d.dr,0);
-  const totRD = data.reduce((s,d)=>s+d.refDR,0);
-  const totRP = data.reduce((s,d)=>s+d.refPhoto,0);
-  const totRO = data.reduce((s,d)=>s+d.refOther,0);
   const totHC = data.reduce((s,d)=>s+d.hc,0);
+  
+  // คำนวณ refer รวมจาก REFER array
+  const distNames = data.map(d => d.name);
+  const referScope = REFER.filter(r => distNames.includes(r.district));
+  const totRD = referScope.filter(r => r.type === 'DR').length;
+  const totRP = referScope.filter(r => r.type === 'ถ่ายซ้ำ').length;
+  const totRO = referScope.filter(r => r.type === 'อื่นๆ').length;
 
   let html = '';
   data.forEach(d => {
     const covPct = d.target>0 ? (d.pct*100).toFixed(1)+'%' : '—';
     const drPct  = d.done>0   ? (d.drPct*100).toFixed(1)+'%' : '—';
     const covCls = d.target>0 && d.pct<0.5 ? 'warn-cell' : 'pct-cell';
+    const rDR = countRefer(d.name, 'DR');
+    const rPh = countRefer(d.name, 'ถ่ายซ้ำ');
+    const rOt = countRefer(d.name, 'อื่นๆ');
     html += `<tr>
       <td>${d.name}</td><td>${d.hc}</td>
       <td>${d.target.toLocaleString()}</td><td>${d.done.toLocaleString()}</td>
       <td class="${covCls}">${covPct}</td>
       <td>${d.noDR.toLocaleString()}</td><td>${d.dr}</td><td>${drPct}</td>
-      <td>${d.refDR}</td><td>${d.refPhoto}</td><td>${d.refOther}</td>
+      <td>${rDR}</td><td>${rPh}</td><td>${rOt}</td>
     </tr>`;
   });
   const totCov  = totT>0 ? ((totD/totT)*100).toFixed(1)+'%' : '—';
@@ -801,20 +872,20 @@ function updateReferSection(dist) {
 //  FILTER & KPI UPDATE
 // ══════════════════════════════════════════════════════
 function applyFilter() {
-  const dist   = document.getElementById('filterDistrict').value;
-  const status = document.getElementById('filterStatus').value;
+  const dist = document.getElementById('filterDistrict').value;
   let data = [...DISTRICTS];
-  if (dist !== 'all')     data = data.filter(d => d.name === dist);
-  if (status === 'active')  data = data.filter(d => d.done > 0);
-  if (status === 'pending') data = data.filter(d => d.done === 0 && d.target === 0);
+  if (dist !== 'all') data = data.filter(d => d.name === dist);
 
   const totT   = data.reduce((s,d)=>s+d.target,0);
   const totD   = data.reduce((s,d)=>s+d.done,0);
   const totND  = data.reduce((s,d)=>s+d.noDR,0);
   const totDR  = data.reduce((s,d)=>s+d.dr,0);
-  const totRD  = data.reduce((s,d)=>s+d.refDR,0);
-  const totRP  = data.reduce((s,d)=>s+d.refPhoto,0);
-  const totRO  = data.reduce((s,d)=>s+d.refOther,0);
+  // นับ Refer จาก REFER array โดยตรง (ค่าจริงจากตารางรายชื่อ)
+  const distList = data.map(d => d.name);
+  const referInScope = REFER.filter(r => distList.includes(r.district));
+  const totRD  = referInScope.filter(r => r.type === 'DR').length;
+  const totRP  = referInScope.filter(r => r.type === 'ถ่ายซ้ำ').length;
+  const totRO  = referInScope.filter(r => r.type === 'อื่นๆ').length;
   const totRef = totRD + totRP + totRO;
 
   // ข้อ 1: อัพเดต sub text ของ KPI เป้าหมาย
@@ -827,7 +898,7 @@ function applyFilter() {
 
   document.getElementById('kpiTarget').textContent   = totT.toLocaleString();
   document.getElementById('kpiDone').textContent     = totD.toLocaleString();
-  document.getElementById('kpiCovPct').textContent   = totT>0 ? ((totD/totT)*100).toFixed(1)+'% ของเป้า' : '—';
+  document.getElementById('kpiCovPct').textContent   = totT>0 ? ((totD/totT)*100).toFixed(1)+'% ของเป้าหมาย' : '—';
   document.getElementById('kpiNoDR').textContent     = totND.toLocaleString();
   document.getElementById('kpiNoDRPct').textContent  = totD>0 ? ((totND/totD)*100).toFixed(1)+'% ของที่ตรวจ' : '—';
   document.getElementById('kpiDR').textContent       = totDR;
@@ -842,6 +913,22 @@ function applyFilter() {
   buildDetail(dist);
   updateReferSection(dist);
 }
+
+// ══════════════════════════════════════════════════════
+//  UPDATE DATE
+// ══════════════════════════════════════════════════════
+(function setUpdateDate() {
+  // ปีงบประมาณไทย พ.ศ. = ค.ศ. + 543
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear() + 543;
+  const thaiMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                      'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const formatted = `${parseInt(d)} ${thaiMonths[now.getMonth()]} ${y}`;
+  const el = document.getElementById('updateDate');
+  if (el) el.textContent = `อัพเดตล่าสุด: ${formatted}`;
+})();
 
 // ══════════════════════════════════════════════════════
 //  INIT
